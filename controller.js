@@ -1,43 +1,76 @@
 const express = require('express');
 const socketIO = require('socket.io');
 const http = require('http');
-const Table = require('./table');
+const Table = require('./services/tableService');
 
-module.exports = class Controller {
+const bodyParser = require('body-parser');
 
-    constructor() {
-        this.app = express();
-        this.httpServer = http.createServer(this.app);
-        this.io = socketIO(this.httpServer);
-        this.speakerList = [];
-        this.handleRoutes();
-        this.handleSocketConnection();
-        this.table=new Table();
-    }
+const userService = require('./services/userService');
+const cardService = require('./services/cardService');
 
+class Controller {
 
-    handleRoutes() {
-        this.app.get("/", (req, res) => {
-            res.send('Hello world!!');
-        });
-    }
+	constructor() {
+		this.app = express();
+		this.httpServer = http.createServer(this.app);
+		this.app.use( bodyParser.json() );
+		this.app.use(bodyParser.urlencoded({
+			extended: true
+		})); 
+		this.io = socketIO(this.httpServer);
+		this.handleRoutes();
+		this.handleSocketConnection();
+		this.table=new Table();
+	}
 
-    handleSocketConnection() {
-        this.io.on("connection", socket => {
+	handleRoutes() {
+		this.app.get('/',function(req, res){
+			res.send('Hello world!!');
+		});
 
-            socket.on("getTable",()=>{
-                this.io.emit("sendTable",this.table.table)
-            })
+		this.app.post('/user',function(req, res){
+			// console.log(req.body);
+			userService.createUser(req.body);
+			res.send(req.body);
+		});
+		this.app.get('/card',async function(req, res){
+			// console.log(req.body);
+			// for(let i=0;i<5;i++){
+			// 	await cardService.createCard({
+			// 		power:10,
+			// 		name:'Example card '+i,
+			// 		describe:'Example description '+i,
+			// 		image:'https://i.pinimg.com/236x/8b/d7/41/8bd741103d058d908b71fba467e732d3--game-ui-card-games.jpg',
+			// 		x:10,
+			// 		y:10,
+			// 		shield:10,
+			// 		onPutTrigger:false,
+			// 	});
+			// }
+			const cards = await cardService.getCards();
+			res.send({body:cards});
+		});
+	}
 
-            socket.on("put", clientData => {
-                this.table.putCard(clientData)
-                //console.log(clientData)
-                socket.emit("sendTable",this.table)
-            });
-        });
-    }
+	handleSocketConnection() {
+		this.io.on('connection', (socket) => {
 
-    listen(PORT) {
-        this.httpServer.listen(PORT,()=>console.log('Server is listening on http://localhost:'+PORT));
-    }
+			socket.on('getTable',()=>{
+				this.io.emit('sendTable',this.table.table);
+			});
+            
+			socket.on('put', (clientData) => {
+				this.table.putCard(clientData);
+				socket.emit('sendTable',this.table);
+			});
+		});
+	}
+
+	listen(PORT) {
+		this.httpServer.listen(PORT,()=>console.log('Server is listening on http://localhost:'+PORT));
+	}
 }
+
+module.exports = {
+	Controller
+};

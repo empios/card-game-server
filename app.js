@@ -1,16 +1,16 @@
 const {Controller} = require('./controller.js');
 const dotenv = require('dotenv');
-const initConnection = require('./services/dbConnector');
+const {initConnection} = require('./services/dbConnector');
 
 dotenv.config();
 
-console.info('Mode =',process.env.NODE);
+console.info('Mode =',process.env.NODEENV);
 
 const server = new Controller();
 
 const { PORT = 3000 } = process.env;
 
 
-initConnection(function () {
+initConnection(()=> {
 	server.listen(PORT);
 });
